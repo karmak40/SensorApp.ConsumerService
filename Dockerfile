@@ -10,13 +10,13 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["src/IfolorConsumerService.Application/IfolorConsumerService.Application.csproj", "src/IfolorConsumerService.Application/"]
+COPY ["src/Ifolor.ConsumerService.Application/Ifolor.ConsumerService.Application.csproj", "src/IfolorConsumerService.Application/"]
 COPY ["src/Ifolor.ConsumerService.Infrastructure/Ifolor.ConsumerService.Infrastructure.csproj", "src/Ifolor.ConsumerService.Infrastructure/"]
 COPY ["src/Ifolor.ConsumerService.Core/Ifolor.ConsumerService.Core.csproj", "src/Ifolor.ConsumerService.Core/"]
-RUN dotnet restore "./src/IfolorConsumerService.Application/IfolorConsumerService.Application.csproj"
+RUN dotnet restore "./src/Ifolor.ConsumerService.Application/Ifolor.ConsumerService.Application.csproj"
 COPY . .
-WORKDIR "/src/src/IfolorConsumerService.Application"
-RUN dotnet build "./IfolorConsumerService.Application.csproj" -c $BUILD_CONFIGURATION -o /app/build
+WORKDIR "/src/src/Ifolor.ConsumerService.Application"
+RUN dotnet build "./Ifolor.ConsumerService.Application.csproj" -c $BUILD_CONFIGURATION -o /app/build
 
 # This stage is used to publish the service project to be copied to the final stage
 FROM build AS publish
