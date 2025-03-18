@@ -4,6 +4,7 @@
 FROM mcr.microsoft.com/dotnet/runtime:8.0 AS base
 USER app
 WORKDIR /app
+EXPOSE 80
 
 
 # This stage is used to build the service project
