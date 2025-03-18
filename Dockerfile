@@ -10,7 +10,7 @@ WORKDIR /app
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 ARG BUILD_CONFIGURATION=Release
 WORKDIR /src
-COPY ["src/Ifolor.ConsumerService.Application/Ifolor.ConsumerService.Application.csproj", "src/IfolorConsumerService.Application/"]
+COPY ["src/Ifolor.ConsumerService.Application/Ifolor.ConsumerService.Application.csproj", "src/Ifolor.ConsumerService.Application/"]
 COPY ["src/Ifolor.ConsumerService.Infrastructure/Ifolor.ConsumerService.Infrastructure.csproj", "src/Ifolor.ConsumerService.Infrastructure/"]
 COPY ["src/Ifolor.ConsumerService.Core/Ifolor.ConsumerService.Core.csproj", "src/Ifolor.ConsumerService.Core/"]
 RUN dotnet restore "./src/Ifolor.ConsumerService.Application/Ifolor.ConsumerService.Application.csproj"
