@@ -8,6 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
+using Prometheus;
 
 var host = Host.CreateDefaultBuilder(args)
                 .ConfigureServices((context, services) =>
@@ -27,7 +28,7 @@ var host = Host.CreateDefaultBuilder(args)
                         }
                         options.UseSqlite(connectionString);
                     });
-
+                    
                     services.AddScoped<IEventRepository, EventRepository>();
                     services.AddScoped<IEventProcessor, EventProcessor>();
                     services.AddScoped<ISensorService, SensorService>();
@@ -35,6 +36,13 @@ var host = Host.CreateDefaultBuilder(args)
                     services.AddScoped<IConnectionService, ConnectionService>();
 
                     services.AddHostedService<ControlService>();
+
+                    // Add Prometheus metrics
+                    services.AddSingleton<MetricServer>(sp =>
+                    {
+                        // Start a lightweight HTTP server to expose /metrics endpoint on port 9090
+                        return new MetricServer(hostname: "0.0.0.0", port: 9090);
+                    });
                 })
                 .ConfigureLogging(logging =>
                 {
@@ -43,6 +51,10 @@ var host = Host.CreateDefaultBuilder(args)
                 })
                 .Build();
 
+// Start the MetricServer manually since it's not an IHostedService
+var metricServer = host.Services.GetRequiredService<MetricServer>();
+metricServer.Start();
+
 using (var scope = host.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ConsumerDbContext>();
@@ -50,3 +62,6 @@ using (var scope = host.Services.CreateScope())
 }
 
 await host.RunAsync();
+
+// Stop the MetricServer when the host shuts down
+metricServer.Stop();

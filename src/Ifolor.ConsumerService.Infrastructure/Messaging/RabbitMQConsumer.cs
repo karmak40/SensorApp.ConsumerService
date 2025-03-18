@@ -1,4 +1,5 @@
-﻿using Ifolor.ConsumerService.Core.Models;
+﻿using Ifolor.ConsumerService.Application.Metric;
+using Ifolor.ConsumerService.Core.Models;
 using Ifolor.ConsumerService.Core.Services;
 using Ifolor.ConsumerService.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
@@ -99,24 +100,28 @@ namespace Ifolor.ConsumerService.Infrastructure.Messaging
                     {
                         try
                         {
+                            ConsumerMetrics.MessagesConsumed.Inc();
                             var body = ea.Body.ToArray();
                             var message = Encoding.UTF8.GetString(body);
                             var eventData = JsonSerializer.Deserialize<SensorData>(message);
 
                             // Add the message to the blocking collection
                             _messageQueue.Add(eventData, cancellationToken);
+                            ConsumerMetrics.MessagesInQueue.Inc();
 
                             // Manually acknowledge the message
                             await channel.BasicAckAsync(ea.DeliveryTag, multiple: false);
                         }
                         catch (JsonException ex)
                         {
+                            ConsumerMetrics.MessagesFailed.Inc();
                             // implement dead letter queue ??
                         }
 
                         catch (Exception ex)
                         {
                             _logger.LogError(ex, "Error processing message");
+                            ConsumerMetrics.MessagesFailed.Inc();
 
                             // Reject the message and requeue it
                             await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true);
@@ -157,14 +162,17 @@ namespace Ifolor.ConsumerService.Infrastructure.Messaging
                     try
                     {
                         await _eventProcessor.HandleEvent(message);
+                        ConsumerMetrics.MessagesProcessed.Inc();
                     }
                     catch (Exception ex)
                     {
                         _logger.LogError(ex, "Error handling event");
+                        ConsumerMetrics.MessagesFailed.Inc();
                     }
                     finally
                     {
                         _semaphore.Release();
+                        ConsumerMetrics.MessagesInQueue.Dec();
                     }
                 }, cancellationToken);
             }
