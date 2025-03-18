@@ -1,6 +1,7 @@
 ﻿using Ifolor.ConsumerService.Core.Services;
 using Ifolor.ConsumerService.Infrastructure.Messaging;
 using Ifolor.ConsumerService.Infrastructure.Persistance;
+using Ifolor.ConsumerService.Infrastructure.Services;
 using IfolorConsumerService.Application.Services;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -12,16 +13,28 @@ var host = Host.CreateDefaultBuilder(args)
                 .ConfigureServices((context, services) =>
                 {
                     services.Configure<SQLiteConfig>(context.Configuration.GetSection("SQLite"));
+                    services.Configure<RabbitMQConfig>(context.Configuration.GetSection("RabbitMQ"));
 
-                    services.AddDbContext<ConsumerDbContext>((serviceProvider, options) =>
+                    // SQLite
+                    services.AddDbContextFactory<ConsumerDbContext>((serviceProvider, options) =>
                     {
-                        var sqliteConfig = serviceProvider.GetRequiredService<IOptions<SQLiteConfig>>().Value;
-                        options.UseSqlite(sqliteConfig.ConnectionString);
+                        var sqliteConfig = serviceProvider.GetRequiredService<IOptions<SQLiteConfig>>();
+                        var connectionString = sqliteConfig.Value.ConnectionString;
+
+                        if (string.IsNullOrEmpty(connectionString))
+                        {
+                            throw new InvalidOperationException("SQLite connection string is null or empty.");
+                        }
+                        options.UseSqlite(connectionString);
                     });
+
                     services.AddScoped<IEventRepository, EventRepository>();
                     services.AddScoped<IEventProcessor, EventProcessor>();
                     services.AddScoped<ISensorService, SensorService>();
-                    services.AddHostedService<RabbitMQConsumer>();
+                    services.AddScoped<IMessageConsumer, RabbitMQConsumer>();
+                    services.AddScoped<IConnectionService, ConnectionService>();
+
+                    services.AddHostedService<ControlService>();
                 })
                 .ConfigureLogging(logging =>
                 {

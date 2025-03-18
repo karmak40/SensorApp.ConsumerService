@@ -1,4 +1,5 @@
-﻿using Ifolor.ConsumerService.Core.Models;
+﻿using Ifolor.ConsumerService.Core.Enums;
+using Ifolor.ConsumerService.Core.Models;
 using System.ComponentModel.DataAnnotations.Schema;
 
 namespace Ifolor.ConsumerService.Infrastructure.Entities
@@ -11,7 +12,7 @@ namespace Ifolor.ConsumerService.Infrastructure.Entities
         public DateTime EventOccureTime { get; set; }
         public DateTime EventProcessedTime { get; set; }
         public double MeasurementValue { get; set; }
-        public string MeasurementType { get; set; }
+        public MeasurementType MeasurementType { get; set; }
         public SensorEventStatus Status { get; internal set; }
     }
 }

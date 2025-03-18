@@ -1,99 +1,173 @@
 ﻿using Ifolor.ConsumerService.Core.Models;
 using Ifolor.ConsumerService.Core.Services;
-using Microsoft.EntityFrameworkCore.Metadata;
-using Microsoft.Extensions.Hosting;
+using Ifolor.ConsumerService.Infrastructure.Services;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
+using System.Collections.Concurrent;
 using System.Text;
 using System.Text.Json;
 
 namespace Ifolor.ConsumerService.Infrastructure.Messaging
 {
-    public class RabbitMQConsumer : IHostedService
+    public class RabbitMQConsumer : IMessageConsumer
     {
+        private const int MaxDegreeOfParallelism = 10;
+        private readonly SemaphoreSlim _semaphore;
+
         private readonly IEventProcessor _eventProcessor;
+        private readonly IConnectionService _connectionService;
+
         private readonly ILogger<RabbitMQConsumer> _logger;
-        private readonly IConnection _connection;
-        private readonly IModel _channel;
-        private Task _executingTask;
+        private RabbitMQConfig _rabbitMQConfig;
+
+        private readonly BlockingCollection<SensorData> _messageQueue = new BlockingCollection<SensorData>();
+        private Task _consumingTask;
+        private Task _processingTask;
+
         private readonly CancellationTokenSource _stoppingCts = new CancellationTokenSource();
 
-        public RabbitMQConsumer(IEventProcessor eventProcessor, ILogger<RabbitMQConsumer> logger) 
+        public RabbitMQConsumer(
+            IEventProcessor eventProcessor,
+            IConnectionService connectionService,
+            ILogger<RabbitMQConsumer> logger,
+            IOptions<RabbitMQConfig> rabbitMQConfig
+            )
         {
             _eventProcessor = eventProcessor;
+            _rabbitMQConfig = rabbitMQConfig.Value;
+            _connectionService = connectionService;
             _logger = logger;
+
+            _semaphore = new SemaphoreSlim(MaxDegreeOfParallelism);
         }
 
-        public Task StartAsync(CancellationToken cancellationToken)
+        public void StartConsuming()
         {
-            _logger.LogInformation("RabbitMQ Consumer Service is starting.");
+            _logger.LogInformation("Starting RabbitMQ Consumer.");
 
-            _executingTask = ExecuteAsync(_stoppingCts.Token);
+            // Start the message processing task
+            _processingTask = Task.Run(() => ProcessMessagesAsync(_stoppingCts.Token), _stoppingCts.Token);
 
-            if (_executingTask.IsCompleted)
-            {
-                return _executingTask;
-            }
-
-            return Task.CompletedTask;
+            // Start the message consuming task
+            _consumingTask = Task.Run(() => ConsumeMessagesAsync(_stoppingCts.Token), _stoppingCts.Token);
         }
 
-        public async Task StopAsync(CancellationToken cancellationToken)
+        public async Task StopConsumingAsync()
         {
-            _logger.LogInformation("RabbitMQ Consumer Service is stopping.");
+            _logger.LogInformation("Stopping RabbitMQ Consumer.");
 
-            if (_executingTask == null)
-            {
-                return;
-            }
+            // Signal cancellation
+            _stoppingCts.Cancel();
 
-            try
-            {
-                // expected stop
-                _stoppingCts.Cancel();
-            }
-            finally
-            {
-                // expecting ending task
-                await Task.WhenAny(_executingTask, Task.Delay(Timeout.Infinite, cancellationToken));
-            }
+            // Wait for both tasks to complete
+            await Task.WhenAll(_consumingTask, _processingTask);
+
+            _logger.LogInformation("RabbitMQ Consumer has stopped.");
         }
 
-        private async Task ExecuteAsync(CancellationToken cancellationToken = default)
+        private async Task ConsumeMessagesAsync(CancellationToken cancellationToken)
         {
-            var factory = new ConnectionFactory { HostName = "localhost", UserName = "guest", Password = "guest" };
-            using var connection = await factory.CreateConnectionAsync();
-            using var channel = await connection.CreateChannelAsync();
-
-            await channel.QueueDeclareAsync(queue: "sendordata", durable: false, exclusive: false, autoDelete: false,
-                arguments: null);
-
-            Console.WriteLine(" [*] Waiting for messages.");
-
-            var consumer = new AsyncEventingBasicConsumer(channel);
-
-            consumer.ReceivedAsync += async (model, ea) =>
+            while (!cancellationToken.IsCancellationRequested)
             {
                 try
                 {
-                    var body = ea.Body.ToArray();
-                    var message = Encoding.UTF8.GetString(body);
-                    var eventData = JsonSerializer.Deserialize<SensorData>(message);
+                    var factory = new ConnectionFactory
+                    {
+                        HostName = _rabbitMQConfig.HostName,
+                        UserName = _rabbitMQConfig.Username,
+                        Password = _rabbitMQConfig.Password,
+                    };
 
-                    await _eventProcessor.HandleEvent(eventData);
+                    using var connection = await _connectionService.CreateConnectionWithRetryAsync(factory, cancellationToken);
+                    using var channel = await connection.CreateChannelAsync();
+
+                    await channel.QueueDeclareAsync(
+                        queue: _rabbitMQConfig.QueueName,
+                        durable: false,
+                        exclusive: false,
+                        autoDelete: false,
+                        arguments: null,
+                        cancellationToken: cancellationToken);
+
+                    _logger.LogInformation(" [*] Waiting for messages.");
+
+                    var consumer = new AsyncEventingBasicConsumer(channel);
+
+                    consumer.ReceivedAsync += async (model, ea) =>
+                    {
+                        try
+                        {
+                            var body = ea.Body.ToArray();
+                            var message = Encoding.UTF8.GetString(body);
+                            var eventData = JsonSerializer.Deserialize<SensorData>(message);
+
+                            // Add the message to the blocking collection
+                            _messageQueue.Add(eventData, cancellationToken);
+
+                            // Manually acknowledge the message
+                            await channel.BasicAckAsync(ea.DeliveryTag, multiple: false);
+                        }
+                        catch (JsonException ex)
+                        {
+                            // implement dead letter queue ??
+                        }
+
+                        catch (Exception ex)
+                        {
+                            _logger.LogError(ex, "Error processing message");
+
+                            // Reject the message and requeue it
+                            await channel.BasicNackAsync(ea.DeliveryTag, multiple: false, requeue: true);
+                        }
+                    };
+
+                    await channel.BasicConsumeAsync(
+                        queue: _rabbitMQConfig.QueueName,
+                        autoAck: false, // Manual acknowledgment
+                        consumer: consumer,
+                        cancellationToken: cancellationToken);
+
+                    // Keep the task running until cancellation is requested
+                    await Task.Delay(Timeout.Infinite, cancellationToken);
+                }
+                catch (OperationCanceledException)
+                {
+                    _logger.LogInformation("Consumer operation was canceled.");
+                    break; // Exit the loop if cancellation is requested
                 }
                 catch (Exception ex)
                 {
-                    _logger.LogError(ex, "Error processing message");
+                    _logger.LogError(ex, "Error in ConsumeMessagesAsync");
+
+                    // Wait before retrying to avoid overwhelming the system
+                    await Task.Delay(TimeSpan.FromSeconds(5), cancellationToken);
                 }
-            };
+            }
+        }
 
-            await channel.BasicConsumeAsync("sendordata", autoAck: true, consumer: consumer);
-
-            _logger.LogInformation("Consumer started. Waiting for messages...");
-
-            await Task.Delay(Timeout.Infinite, cancellationToken);
+        private async Task ProcessMessagesAsync(CancellationToken cancellationToken)
+        {
+            foreach (var message in _messageQueue.GetConsumingEnumerable(cancellationToken))
+            {
+                await _semaphore.WaitAsync(cancellationToken);
+                _ = Task.Run(async () =>
+                {
+                    try
+                    {
+                        await _eventProcessor.HandleEvent(message);
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogError(ex, "Error handling event");
+                    }
+                    finally
+                    {
+                        _semaphore.Release();
+                    }
+                }, cancellationToken);
+            }
         }
     }
 }
