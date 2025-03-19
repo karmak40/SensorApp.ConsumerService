@@ -1,10 +1,6 @@
 using Ifolor.ConsumerService.Core.Models;
-using Ifolor.ConsumerService.Core.Services;
-using Ifolor.ConsumerService.Infrastructure.Entities;
 using Ifolor.ConsumerService.Infrastructure.Persistance;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
 using Moq;
 
 namespace Ifolor.ConsumerService.Tests
