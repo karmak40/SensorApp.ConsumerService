@@ -40,6 +40,9 @@ var host = Host.CreateDefaultBuilder(args)
                     services.AddScoped<IConnectionService, ConnectionService>();
 
                     services.AddHostedService<ControlService>();
+
+                    // Register KestrelMetricServer as a hosted service
+                    services.AddHostedService<MetricsServerHostedService>();
                 })
                 .ConfigureLogging(logging =>
                 {
@@ -48,20 +51,6 @@ var host = Host.CreateDefaultBuilder(args)
                 })
                 .Build();
 
-var logger = host.Services.GetRequiredService<ILogger<Program>>();
-try
-{
-    logger.LogInformation("Starting KestrelMetricServer on 9090");
-    using var server = new KestrelMetricServer("0.0.0.0", port: 9090);
-    server.Start();
-    logger.LogInformation("KestrelMetricServer started");
-}
-catch (Exception ex)
-{
-    logger.LogError(ex, "Failed to start KestrelMetricServer");
-    throw;
-}
-
 using (var scope = host.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<ConsumerDbContext>();
@@ -69,3 +58,32 @@ using (var scope = host.Services.CreateScope())
 }
 
 await host.RunAsync();
+
+
+// Hosted service to run KestrelMetricServer
+public class MetricsServerHostedService : IHostedService
+{
+    private readonly ILogger<MetricsServerHostedService> _logger;
+    private readonly KestrelMetricServer _metricServer;
+
+    public MetricsServerHostedService(ILogger<MetricsServerHostedService> logger)
+    {
+        _logger = logger;
+        _metricServer = new KestrelMetricServer(hostname: "0.0.0.0", port: 9090);
+    }
+
+    public Task StartAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Starting KestrelMetricServer on 0.0.0.0:9090");
+        _metricServer.Start();
+        _logger.LogInformation("KestrelMetricServer started");
+        return Task.CompletedTask;
+    }
+
+    public Task StopAsync(CancellationToken cancellationToken)
+    {
+        _logger.LogInformation("Stopping KestrelMetricServer");
+        _metricServer.Stop();
+        return Task.CompletedTask;
+    }
+}
