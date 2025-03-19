@@ -2,6 +2,9 @@
 
 namespace Ifolor.ConsumerService.Application.Metric
 {
+    /// <summary>
+    /// Metrics to display in prometheus / grafana
+    /// </summary>
     public class ConsumerMetrics
     {
         public static readonly Counter MessagesConsumed = Metrics

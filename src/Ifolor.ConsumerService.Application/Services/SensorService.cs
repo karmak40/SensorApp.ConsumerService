@@ -8,6 +8,10 @@ using System.Threading.Tasks;
 
 namespace IfolorConsumerService.Application.Services
 {
+    /// <summary>
+    /// Proccessing Sensor data and gives response upon success 
+    /// todo: mimic failing of proccessing sensor data
+    /// </summary>
     public class SensorService : ISensorService
     {
         public SensorEventData ProcessSensorEvent(SensorData eventData)

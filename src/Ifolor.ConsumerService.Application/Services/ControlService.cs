@@ -4,6 +4,10 @@ using Microsoft.Extensions.Logging;
 
 namespace IfolorConsumerService.Application.Services
 {
+    /// <summary>
+    /// Responsible for Start / Stop Consuming logic 
+    /// starting consuming workflow
+    /// </summary>
     public class ControlService : IHostedService
     {
         private readonly IMessageConsumer _messageConsumer;

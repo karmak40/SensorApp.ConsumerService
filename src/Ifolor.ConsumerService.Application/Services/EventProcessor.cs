@@ -4,6 +4,9 @@ using Ifolor.ConsumerService.Infrastructure.Persistance;
 
 namespace IfolorConsumerService.Application.Services
 {
+    /// <summary>
+    /// Controlls event handling
+    /// </summary>
     public class EventProcessor : IEventProcessor
     {
         private readonly IEventRepository _repository;

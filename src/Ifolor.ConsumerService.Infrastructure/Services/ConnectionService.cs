@@ -16,6 +16,13 @@ namespace Ifolor.ConsumerService.Infrastructure.Services
             _logger = logger;
         }
 
+        /// <summary>
+        /// Try to create connection, if failed, retry after inteval
+        /// </summary>
+        /// <param name="factory"></param>
+        /// <param name="cancellationToken"></param>
+        /// <returns></returns>
+        /// <exception cref="InvalidOperationException"></exception>
         public async Task<IConnection> CreateConnectionWithRetryAsync(IConnectionFactory factory, CancellationToken cancellationToken)
         {
             var maxRetries = _consumerPolicyConfig.MaxConnectionRetry;
