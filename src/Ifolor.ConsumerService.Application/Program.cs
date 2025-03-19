@@ -17,6 +17,8 @@ var host = Host.CreateDefaultBuilder(args)
                     services.Configure<RabbitMQConfig>(context.Configuration.GetSection("RabbitMQ"));
 
                     services.Configure<ConsumerPolicyConfig>(context.Configuration.GetSection("ConsumerPolicy"));
+                    // Register metrics
+                    services.AddMetrics();
 
                     // SQLite
                     services.AddDbContextFactory<ConsumerDbContext>((serviceProvider, options) =>
@@ -49,7 +51,7 @@ var host = Host.CreateDefaultBuilder(args)
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
 try
 {
-    logger.LogInformation("Starting KestrelMetricServer on 0.0.0.0:9090");
+    logger.LogInformation("Starting KestrelMetricServer on 9090");
     using var server = new KestrelMetricServer("0.0.0.0", port: 9090);
     server.Start();
     logger.LogInformation("KestrelMetricServer started");
