@@ -1,5 +1,8 @@
 ﻿namespace Ifolor.ConsumerService.Infrastructure.Messaging
-{
+{   
+    /// <summary>
+    /// Setting for RabbitMQ 
+    /// </summary>
     public class RabbitMQConfig
     {
         public string HostName { get; set; } = "localhost";

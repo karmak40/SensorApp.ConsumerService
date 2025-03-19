@@ -16,6 +16,8 @@ var host = Host.CreateDefaultBuilder(args)
                     services.Configure<SQLiteConfig>(context.Configuration.GetSection("SQLite"));
                     services.Configure<RabbitMQConfig>(context.Configuration.GetSection("RabbitMQ"));
 
+                    services.Configure<ConsumerPolicyConfig>(context.Configuration.GetSection("ConsumerPolicy"));
+
                     // SQLite
                     services.AddDbContextFactory<ConsumerDbContext>((serviceProvider, options) =>
                     {

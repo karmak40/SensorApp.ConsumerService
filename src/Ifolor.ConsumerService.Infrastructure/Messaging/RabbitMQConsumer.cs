@@ -12,6 +12,9 @@ using System.Text.Json;
 
 namespace Ifolor.ConsumerService.Infrastructure.Messaging
 {
+    /// <summary>
+    /// Service responsible for gecieving messages from RabbitMQ Message broker
+    /// </summary>
     public class RabbitMQConsumer : IMessageConsumer
     {
         private const int MaxDegreeOfParallelism = 10;
@@ -72,9 +75,10 @@ namespace Ifolor.ConsumerService.Infrastructure.Messaging
         {
             while (!cancellationToken.IsCancellationRequested)
             {
+
                 try
                 {
-                    var factory = new ConnectionFactory
+                    IConnectionFactory factory = new ConnectionFactory
                     {
                         HostName = _rabbitMQConfig.HostName,
                         UserName = _rabbitMQConfig.Username,

@@ -7,6 +7,7 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "src", "src", "{098644B7-352
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{454557AF-BE08-458C-BB68-6491F1E6B82B}"
 	ProjectSection(SolutionItems) = preProject
+		.editorconfig = .editorconfig
 		Dockerfile = Dockerfile
 	EndProjectSection
 EndProject
@@ -16,7 +17,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ifolor.ConsumerService.Infr
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "tests", "tests", "{8581CABA-B175-4711-92E5-FC7A318D2B45}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Ifolor.ConsumerService.Tests", "tests\Ifolor.ConsumerService.Tests\Ifolor.ConsumerService.Tests.csproj", "{548CF5F7-95C6-45BE-94D7-86130FF6838C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ifolor.ConsumerService.Tests", "tests\Ifolor.ConsumerService.Tests\Ifolor.ConsumerService.Tests.csproj", "{548CF5F7-95C6-45BE-94D7-86130FF6838C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Ifolor.ConsumerService.Application", "src\Ifolor.ConsumerService.Application\Ifolor.ConsumerService.Application.csproj", "{9ED5C215-0B97-45C2-952E-5F42DF34A441}"
 EndProject

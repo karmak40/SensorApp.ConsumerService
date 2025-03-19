@@ -6,6 +6,9 @@ using System.Text.Json;
 
 namespace Ifolor.ConsumerService.Infrastructure.Persistance
 {
+    /// <summary>
+    /// Repository responsible for saving messages to the DB
+    /// </summary>
     public class EventRepository : IEventRepository
     {
         private readonly IDbContextFactory<ConsumerDbContext> _contextFactory;
