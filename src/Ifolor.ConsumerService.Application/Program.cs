@@ -30,7 +30,7 @@ var host = Host.CreateDefaultBuilder(args)
                         }
                         options.UseSqlite(connectionString);
                     });
-                    
+
                     services.AddScoped<IEventRepository, EventRepository>();
                     services.AddScoped<IEventProcessor, EventProcessor>();
                     services.AddScoped<ISensorService, SensorService>();
@@ -38,13 +38,6 @@ var host = Host.CreateDefaultBuilder(args)
                     services.AddScoped<IConnectionService, ConnectionService>();
 
                     services.AddHostedService<ControlService>();
-
-                    // Add Prometheus metrics
-                    services.AddSingleton<MetricServer>(sp =>
-                    {
-                        // Start a lightweight HTTP server to expose /metrics endpoint on port 9090
-                        return new MetricServer(hostname: "0.0.0.0", port: 9090);
-                    });
                 })
                 .ConfigureLogging(logging =>
                 {
@@ -53,19 +46,16 @@ var host = Host.CreateDefaultBuilder(args)
                 })
                 .Build();
 
-// Start the MetricServer manually since it's not an IHostedService
-var metricServer = host.Services.GetRequiredService<MetricServer>();
-
 var logger = host.Services.GetRequiredService<ILogger<Program>>();
 try
 {
-    logger.LogInformation("Starting MetricServer on 0.0.0.0:9090");
-    metricServer.Start();
-    logger.LogInformation("MetricServer started");
+    logger.LogInformation("Starting Kestrel MetricServer on port 9090");
+    using var server = new KestrelMetricServer(port: 9090);
+    server.Start(); logger.LogInformation("Kestrel MetricServer started");
 }
 catch (Exception ex)
 {
-    logger.LogError(ex, "Failed to start MetricServer");
+    logger.LogError(ex, "Failed to start Kestrel MetricServer");
     throw;
 }
 
@@ -76,6 +66,3 @@ using (var scope = host.Services.CreateScope())
 }
 
 await host.RunAsync();
-
-// Stop the MetricServer when the host shuts down
-metricServer.Stop();
