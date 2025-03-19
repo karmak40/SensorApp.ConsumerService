@@ -50,7 +50,7 @@ var logger = host.Services.GetRequiredService<ILogger<Program>>();
 try
 {
     logger.LogInformation("Starting Kestrel MetricServer on port 9090");
-    using var server = new KestrelMetricServer(port: 9090);
+    using var server = new KestrelMetricServer("0.0.0.0", port: 9090);
     server.Start(); logger.LogInformation("Kestrel MetricServer started");
 }
 catch (Exception ex)

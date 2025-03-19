@@ -146,6 +146,7 @@ namespace Ifolor.ConsumerService.Infrastructure.Messaging
                     _logger.LogInformation("Consumer operation was canceled.");
                     break; // Exit the loop if cancellation is requested
                 }
+                // todo add InvalidOperationException and end service
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Error in ConsumeMessagesAsync");
