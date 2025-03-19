@@ -53,7 +53,19 @@ var host = Host.CreateDefaultBuilder(args)
 
 // Start the MetricServer manually since it's not an IHostedService
 var metricServer = host.Services.GetRequiredService<MetricServer>();
-metricServer.Start();
+
+var logger = host.Services.GetRequiredService<ILogger<Program>>();
+try
+{
+    logger.LogInformation("Starting MetricServer on 0.0.0.0:9090");
+    metricServer.Start();
+    logger.LogInformation("MetricServer started");
+}
+catch (Exception ex)
+{
+    logger.LogError(ex, "Failed to start MetricServer");
+    throw;
+}
 
 using (var scope = host.Services.CreateScope())
 {
